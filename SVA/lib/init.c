@@ -83,6 +83,7 @@
 
 #include "sva/config.h"
 #include "sva/state.h"
+#include "sva/util.h"
 
 #include <string.h>
 #include <limits.h>
@@ -101,6 +102,7 @@ static void init_debug (void);
 extern void init_mmu (void);
 void init_fpu ();
 static void init_dispatcher ();
+void init_pcid (void);
 
 /* Default LLVA interrupt, exception, and system call handlers */
 extern void default_interrupt (unsigned int number, void * icontext);
@@ -432,6 +434,70 @@ init_fpu () {
   return;
 }
 
+void
+init_pcid () {
+  const unsigned int pe =    0x00000001u; // Bit 0
+  const unsigned int pg =    0x80000000u; // Bit 31
+  const unsigned int lme =   0x00000100u; // Bit 8
+  const unsigned int pae =   0x00000020u; // Bit 5
+  const unsigned int pcide = 0x00020000u; // Bit 17
+  unsigned int cr0;
+  unsigned int cr4;
+
+  /* Disable paging */ 
+  __asm__ __volatile__ ("mov %%cr0, %0\n"
+                        "and %1, %0\n"
+                        "mov %0, %%cr0\n"
+                        : "=r" (cr0)
+                        : "r" (~pg));
+
+  /* Enable protected mode */
+  __asm__ __volatile__ ("mov %%cr0, %0\n"
+                        "or  %1, %0\n"
+                        "mov %0, %%cr0\n"
+                        : "=&r" (cr0)
+                        : "r" (pe));
+
+  /* Enable physical address extension */
+  __asm__ __volatile__ ("mov %%cr4, %0\n"
+                        "or  %1, %0\n"
+                        "mov %0, %%cr4\n"
+                        : "=&r" (cr4)
+                        : "r" (pae));
+
+  /* Enable long mode */
+  __asm__ __volatile__ ("mov $0xC0000080, %%ecx\n"
+                        "rdmsr\n"
+                        "or %0, %%eax\n"
+                        :
+                        : "r" (lme)
+                        : "%ecx", "%eax", "%edx");
+
+  /* Enable paging */
+  __asm__ __volatile__ ("mov %%cr0, %0\n"
+                        "or  %1, %0\n"
+                        "mov %0, %%cr0\n"
+                        : "=&r" (cr0)
+                        : "r" (pg));
+
+  /* Check if PCID supported */
+  if (!is_pcid_supported()) {
+    panic("PCID not supported\n");
+  } 
+
+  /* Enable PCIDs */
+  __asm__ __volatile__ ("mov %%cr4, %0\n"
+                        "or  %1, %0\n"
+                        "mov %0, %%cr4\n"
+                        : "=&r" (cr4)
+                        : "r" (pcide));
+
+  /* Set kernel PCID */
+  set_kernel_pcid();
+
+  return;
+}
+
 /*
  * Intrinsic: sva_init_primary()
  *
@@ -460,6 +526,8 @@ sva_init_primary () {
 
   init_mmu ();
   init_fpu ();
+
+  init_pcid ();
 #if 0
   llva_reset_counters();
   llva_reset_local_counters();
@@ -497,6 +565,8 @@ sva_init_secondary () {
   init_mmu ();
 #endif
   init_fpu ();
+
+  init_pcid ();
 #if 0
   llva_reset_counters();
   llva_reset_local_counters();
