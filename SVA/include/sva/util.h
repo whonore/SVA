@@ -21,6 +21,54 @@ extern "C" {
 #endif
 
 static inline void
+set_kernel_pcid () {
+  static const unsigned int reset_pcid  = 0x111u; 
+  static const unsigned int kernel_pcid = 0x001u;
+  unsigned int cr3;
+
+  /* Set PCID to kernel_pcid */
+  __asm__ __volatile__ ("mov %%cr3, %0\n"
+                        "and %2, %0\n"
+                        "or  %1, %0\n"
+                        "mov %0, %%cr3\n"
+                        : "=&r" (cr3)
+                        : "r" (kernel_pcid), "r" (~reset_pcid));
+
+  return;
+}
+
+static inline void
+set_sva_pcid () {
+  static const unsigned int reset_pcid = 0x111u; 
+  static const unsigned int sva_pcid   = 0x002u;
+  unsigned int cr3;
+
+  /* Set PCID to sva_pcid */
+  __asm__ __volatile__ ("mov %%cr3, %0\n"
+                        "and %2, %0\n"
+                        "or  %1, %0\n"
+                        "mov %0, %%cr3\n"
+                        : "=&r" (cr3)
+                        : "r" (sva_pcid), "r" (~reset_pcid));
+
+  return;
+}
+
+static inline unsigned char
+is_pcid_supported () {
+  const unsigned int pcid = 0x00020000u; // Bit 17
+  unsigned int cpuid;
+
+  __asm__ __volatile__ ("mov $0x1, %%eax\n"
+                        "cpuid\n"
+                        : "=c" (cpuid)
+                        :
+                        : "%ecx", "%eax", "%edx");
+
+  return ((cpuid & pcid) != 0);
+}
+
+static inline void
 sva_check_memory_read (void * memory, unsigned int size) {
   volatile unsigned char value;
   volatile unsigned char * p = (unsigned char *)(memory);
