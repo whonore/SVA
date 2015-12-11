@@ -233,6 +233,11 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
   sva_check_memory_write (ep->rsp, sizeof (uintptr_t));
 
   /*
+   * Set SVA's PCID
+   */
+  set_sva_pcid ();
+
+  /*
    * Place the arguments into the proper registers.
    */
   ep->rdi = p1;
@@ -257,6 +262,11 @@ sva_ipush_function5 (void (*newf)(uintptr_t, uintptr_t, uintptr_t),
    * invalidated it, an sva_ipush_function() makes it valid again.
    */
   ep->valid = 1;
+
+  /*
+   * Set kernel's PCID
+   */
+  set_kernel_pcid ();
 
   /*
    * Re-enable interrupts.
@@ -766,6 +776,11 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
        * memory.
        */
       sva_check_memory_write (allocap, size);
+      
+      /*
+       * Set SVA's PCID
+       */
+      set_sva_pcid ();
 
       /*
        * Save the result back into the Interrupt Context.
@@ -780,6 +795,12 @@ sva_ialloca (uintptr_t size, uintptr_t alignment, void * initp) {
        */
       if (initp)
         memcpy (allocap, initp, size);
+
+      /*
+       * Set kernel's PCID
+       */
+      set_kernel_pcid ();
+
     } else {
       allocap = 0;
     }
@@ -972,6 +993,12 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
    */
   sva_check_memory_write (ep, sizeof (sva_icontext_t));
 
+
+  /*
+   * Set SVA's PCID
+   */
+  set_sva_pcid (); 
+
   /*
    * Remove mappings to the secure memory for this thread.
    */
@@ -1042,6 +1069,11 @@ sva_reinit_icontext (void * handle, unsigned char priv, uintptr_t stackp, uintpt
     memcpy (&(threadp->ghostKey), &(transp->key), sizeof (sva_key_t));
     transp->used = 0;
   }
+
+  /*
+   * Set kernel's PCID
+   */
+  set_kernel_pcid ();
 
   /* Re-enable interupts if they were enabled before */
   sva_exit_critical (rflags);
@@ -1198,6 +1230,11 @@ sva_init_stack (unsigned char * start_stackp,
   sva_check_memory_write (newThread, sizeof (struct SVAThread));
 
   /*
+   * Set SVA's PCID
+   */
+  set_sva_pcid ();
+
+  /*
    * Copy over the secure memory mappings from the old thread to the new
    * thread.
    */
@@ -1280,6 +1317,11 @@ sva_init_stack (unsigned char * start_stackp,
 
   /* Mark the interrupt context as valid */
   icontextp->valid = 1;
+
+  /*
+   * Set kernel's PCID
+   */
+  set_kernel_pcid ();
 
   /*
    * Re-enable interrupts.

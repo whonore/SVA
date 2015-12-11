@@ -20,6 +20,14 @@
 extern "C" {
 #endif
 
+/*
+ * Function: set_kernel_pcid()
+ *
+ * Description:
+ *  Sets the current PCID to be the kernel's. This prevents the kernel from
+ *  accessing cached page table information that is associated with a different
+ *  PCID.
+ */
 static inline void
 set_kernel_pcid () {
   static const unsigned int reset_pcid  = 0x111u; 
@@ -37,6 +45,13 @@ set_kernel_pcid () {
   return;
 }
 
+/*
+ * Function: set_sva_pcid()
+ *
+ * Description:
+ *  Sets the current PCID to be SVA's. This should only be called when there
+ *  is no chance that control could pass to the kernel. 
+ */
 static inline void
 set_sva_pcid () {
   static const unsigned int reset_pcid = 0x111u; 
@@ -54,6 +69,16 @@ set_sva_pcid () {
   return;
 }
 
+/* 
+ * Function: is_pcid_supported()
+ *
+ * Description:
+ *  Checks if the processor supports PCIDs. 
+ *
+ * Return value:
+ *  1 - PCIDs are supported
+ *  0 - PCIDs are not supported
+ */
 static inline unsigned char
 is_pcid_supported () {
   const unsigned int pcid = 0x00020000u; // Bit 17
