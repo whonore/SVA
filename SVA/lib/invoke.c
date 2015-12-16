@@ -80,6 +80,11 @@ sva_iunwind (void) {
   sva_check_memory_write (ip, sizeof (sva_icontext_t));
 
   /*
+   * Set SVA's PCID
+   */
+  set_sva_pcid ();
+
+  /*
    * Adjust the program state so that it resumes inside the invoke instruction.
    */
   switch (gip->cpinvoke) {
@@ -100,6 +105,11 @@ sva_iunwind (void) {
       panic ("SVA: Other Invoke Frames Unsupported!\n");
       break;
   }
+
+  /*
+   * Set kernel's PCID
+   */
+  set_kernel_pcid ();
 
   /*
    * Re-enable interrupts.
