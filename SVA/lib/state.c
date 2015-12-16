@@ -436,7 +436,7 @@ static inline void
 flushSecureMemory (struct SVAThread * threadp) {
   /*
    * Invalidate all TLBs (including those with the global flag).  We do this
-   * by first turning on and then turning off the PCID extension.  According
+   * by first turning off and then turning on the PCID extension.  According
    * to the Intel Software Architecture Reference Manual, Volume 3,
    * Section 4.10.4, this will do the invalidation that we want.
    *
@@ -444,13 +444,18 @@ flushSecureMemory (struct SVAThread * threadp) {
    * invalidating every page individually.  Since we usually flush on a context
    * switch, we just flushed all the TLBs anyway by changing CR3.  Therefore,
    * we lose speed by not flushing everything again.
+   *
+   * Before turning the PCID extension on again, we must first set the current
+   * PCID (CR3[11:0] to 000H).
    */
   __asm__ __volatile__ ("movq %cr4, %rax\n"
                         "movq %cr4, %rcx\n"
-                        "orq $0x20000, %rax\n"
+                        "orq  $0x20000, %rax\n"
                         "andq $0xfffffffffffdffff, %rcx\n"
-                        "movq %rax, %cr4\n"
-                        "movq %rcx, %cr4\n");
+                        "andq $0xfffffffffffff000, %cr3\n"
+                        "movq %rcx, %cr4\n"
+                        "movq %rax, %cr4\n");
+  set_kernel_pcid ();
   return;
 }
 
